@@ -32,6 +32,7 @@ docker run -it -v $(pwd)/riscv-isa-manual:/build riscvintl/riscv-docs-base-conta
 cd ./build
 make
 ```
+If you do not want build, a built pdf file is in the buid folder.
 
 ## Contributing
 If you would like to contribute to this documentation, please refer to the [Documentation Developer's Guide](https://github.com/riscv/docs-dev-guide).
