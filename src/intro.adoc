@@ -1,0 +1,4 @@
+[[intro]]
+== Introduction
+
+For convolution and matrix multiplication, which account for the highest proportion of computing power in AI applications, dedicated acceleration instructions have been added based on the RISCV Vector 1.0 standard instructions. Following the RISC-V IME extension standard, and reusing Vector register resources, these instructions can bring more than a tenfold performance improvement to AI applications at a very small hardware cost. 

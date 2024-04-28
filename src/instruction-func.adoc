@@ -1,0 +1,299 @@
+[[insfunc]]
+== Instruction description
+
+AI extension instructions are divided into two categories based on their functionality: dot-product matrix multiply-accumulate instructions and sliding-window dot-product instructions. Different values of VLEN and SEW correspond to different MAC uints.
+
+=== Dot-product matrix multiply-accumulate instructions
+
+Dot-product multiply-accumulate instructions can be categorized into two types: integer dot-product matrix multiply-accumulate instructions and floating-point dot-product matrix multiply-accumulate instructions. During matirx multiplication and accumulating computation, the layout of input and output data in registers is considered as two-dimensional data. The layout of input of integer instructions and floating-point instructions is identical, but layout of output is different. The integer instructions require two registers to store thire output, but the floating-point instructions only require one.
+
+==== Integer dot-product matrix multiply-accumulate instructions
+
+Let's take a closer look at the layout of dot-product matrix multiply-accumulate instructions. The input A in VS1 is treated as _copies_*(M, K) matrices, while the input B in VS2 is treated as _copies_*(K, N). The result C will be stored in two sequential registers (the index of VD(L) must be even), and its elements will be treated as _copies_*(M, N) matrices. For example, when the VLEN=256 and SEW=8, the layout is as described below:
+
+image:int-matrix-multiply-0.png[int-matrix-multiply-0.png]
+
+At this time, assume the max MAC unit (4x4x8) has been implemented. Then the input matrix A is treated as a (4, 8) matrix and B is treated as a (8, 4) matrix. After matrix multiplication, the resulting matrix C is of size (4, 4), whose data type is int32. When VLEN=512 and SEW=8, the _copy_ is 2, the layout can be as stated as follows.
+
+image:int-matrix-multiply-1.png[int-matrix-multiply-1.png]
+
+Input data is stored in VS1 and VS1+1 (the index of VS1 must be even), and the elements of matrix A are sliding-packing from the two (2*4,8) matrices in VS1 and VS1+1. Input B is placed in VS2, with its elements viewed as two (8,4) matrices. The result C consists of two (M,N) matrices, they are stored in two sequential registers (the index of VD(L) must be even).
+
+The integer dot-product matrix multiply-accumulate instructions take matrix A and matrix B as input, and accumulate the multiplication result of A and B into C.
+
+* shape of A: M rows, K columns [x Copies]
+* shape of B: K rows, N columns [x Copies]
+* shape of C: M rows, N columns [x Copies]
+
+TIP: The value of Copies can be either 1 or 2, Copies=(sqrt(VLEN/64) == floor(sqrt(VLEN/64)) ? 1 : 2)
+
+As mentioned before, this instructions function can be descripted as follows:
+....
+Copies=(sqrt(VLEN/64) == floor(sqrt(VLEN/64)) ? 1 : 2)
+for (cp = 0; cp < Copies; cp++) {
+    for (i = 0; i < M; i++) {
+        for (j = 0; j < N; j ++) {
+            for (k = 0; k < K; k++) {
+                C[cp * M * N + i * N + j] +=
+                    int32(A[cp * M * K + i * N + k] * B[cp * K *N + k * N + j]);
+                }
+             }
+         }
+     }
+ }
+....
+
+The data type of supported by the the integer dot-product matrix multiply-accumulate instructions is in the following table.
+
+.Data type of vmadot
+[width="100%",cols="2,3,3,3",options="header",]
+|===
+| instructions | Operand Type A | Operand Type B | Accumulator Type C | 
+vmadot   | int4/int8/int16 | int4/int8/int16 | int32/int32/fp32 |  
+vmadotu  | uint4/uint8/uint16 | uint4/uint8/uint16 | int32/int32/fp32 |  
+vmadotsu | int4/int8/int16 | uint4/uint8/uint16 | int32/int32/fp32 |
+vmadotus | uint4/uint8/uint16 | int4/int8/int16 | int32/int32/fp32 
+|===
+
+And the usage of the instructions:
+
+....
+# vs1 refers to input A, vs2 refers to input B, and vd refers to output C.
+
+vmadot      vd,     vs1,    vs2
+vmadotu     vd,     vs1,    vs2
+vmadotsu    vd,     vs1,    vs2
+vmadotus    vd,     vs1,    vs2
+....
+
+NOTE: the index of vd must be even.
+
+
+==== Floating point dot-product matrix multiply-accumulate instructions
+
+Same as the integer dot-product matrix multiply-accumulate instructions, the floating point dot-product matrix multiply-accumulate also support _copy_=1 and _copy_=2. The input A in VS1 is considered as _copies_*(M, K) matrices, while the input B in VS2 is considered as _copies_*(K, N). The result C will be stored in two sequential registers (the index of VD(L) must be even), and its elements will be considered as _copies_*(M, N) matrices,. For example, when the VLEN=256 and SEW=8, the layout is as follows:
+
+image:float-matrix-multiply-0.png[float-matrix-multiply-0.png]
+
+At this time, assume the max MAC unit (4x4x8) has been implemented. Then the input matrix A is considered as a (4, 8) matrix and B is considered as a (8, 4) matrix. After matrix multiplication, the resulting matrix C is of size (4, 4), whose data type is fp16 or bfp16. When the VLEN=512 and SEW=8, _copy_ is 2, the layout is shown as follows.
+
+image:float-matrix-multiply-1.png[float-matrix-multiply-1.png]
+
+Input data is stored in VS1 and VS1+1 (the index of VS1 must be even), and the elements of matrix A are sliding-packing from the two (2*4,8) matrices in VS1 and VS1+1. Input B is stored in VS2, with its elements considered as two (8,4) matrices. The result C consists of two (M,N) matrices, they are stored in one registers.
+
+The floating point dot-product matrix multiply-accumulate instructions take matrix A and matrix B as input, and accumulate the multiplication result of A and B into C.
+
+* shape of A: M rows, K columns [x Copies]
+* shape of B: K rows, N columns [x Copies]
+* shape of C: M rows, N columns [x Copies]
+
+TIP: The value of Copies can be either 1 or 2, Copies=(sqrt(VLEN/64) == floor(sqrt(VLEN/64)) ? 1 : 2)
+
+The function is the same as the integer one.
+....
+assume FP = fp16 or bfp16
+Copies=(sqrt(VLEN/64) == floor(sqrt(VLEN/64)) ? 1 : 2)
+for (cp = 0; cp < Copies; cp++) {
+    for (i = 0; i < M; i++) {
+        for (j = 0; j < N; j ++) {
+            for (k = 0; k < K; k++) {
+                C[cp * M * N + i * N + j] +=
+                    FP(A[cp * M * K + i * N + k] * B[cp * K *N + k * N + j]);
+                }
+             }
+         }
+     }
+ }
+....
+
+The data type of supported by the the floating-point dot-product matrix multiply-accumulate instructions is in the following table.
+
+.Data type of vfmadot
+[width="100%",cols="2,3,3,3",options="header",]
+|===
+| instructions | Operand Type A | Operand Type B | Accumulator Type C |
+vfmadot  | fp4/fp8/fp16/bfp16 | fp4/fp8/fp16/bfp16 | fp16/fp16/fp16/bfp16
+|===
+
+And the usage of the instructions:
+
+....
+# vs1 refers to input A, vs2 refers to input B, and vd refers to output C.
+
+vfmadot     vd,     vs1,    vs2
+....
+
+=== Sliding-window dot-product matrix multiply-accumulate instruction
+
+The sliding-window dot-product matrix multiply-accumulate instructions can select specified values from two sequential registers, VS1 and VS1+1 to be used as matrix A. The data mode of data of matrix B and Matrix C are the same as the instructions without slide. Depending on the data type, it is further categorised into integer and floating-point types.
+
+
+==== Integer sliding-window dot-product matrix multiply-accumulate instruction
+
+During matrix multiply computation, the layout of input and output data in the registers also can be divided into two situations. The input A will be selected from VS1 and VS1+1 (the index of VS1 must be even), and the selected elements will be considered as _copies_ * (M,K) matrices. Input B is stored in VS2, with elements considered as _copies_ * (K,N) matrices. The result C will be stored in two sequential registers (the index of VD(L) must be even), with elements considered as _copies_ * (M,N) matrices. For example, when the VLEN=256 and SEW=8, the configuration would be as illustrated in the following diagram:
+
+image:int-slide-window-0.png[int-slide-window-0.png]
+
+Elements of A are selected from a (2*4,8) matrix formed by combining VS1 and VS1+1, and matching elements are selected through a specified sliding value. As demonstrated previously, with a slide value of 1, the blue frame slides down 8(1*K) elements. The resulting values form an (4,8) matrix, which serves as input matrix A for the matrix multiply-accumulate calculation. For matrix B and C, are the same as the instructions without slideing.
+
+In the case of VLEN=512, SEW=8, where _copy_ is set to 2, the layout would be as shown in the following diagram:
+
+image:int-slide-window-1.png[int-slide-window-1.png]
+
+The elements in VS1 and VS1+1 can be considered as two (2*4, 8) matrices. Then, in the same manner as with _copy_=1, the matching elements are selected using a specified slide value. The data obtained from the slide are two (M,K) matrices, which serve as input matrices A for the matrix multiply-accumulate computation.
+
+Sliding-window dot-product matrix multiply-accumulate instructions also take matrix A and matrix B as input, and accumulate the multiplication result of A and B into C.
+
+* shape of A: M rows, K columns [x Copies]
+* shape of B: K rows, N columns [x Copies]
+* shape of C: M rows, N columns [x Copies]
+
+The function description:
+....
+Copies=(sqrt(VLEN/64) == floor(sqrt(VLEN/64)) ? 1 : 2)
+for (cp = 0; cp < Copies; cp++) {
+    for (i = 0; i < M; i++) {
+        for (j = 0; j < N; j ++) {
+            for (k = 0; k < K; k++) {
+                C[cp * M * N + i * N + j] +=
+                    int32(A[cp * M * K + slide * K + i * N + k] * B[cp * K *N + k * N + j]);
+                }
+             }
+         }
+     }
+ }
+....
+
+The data type of supported by the the integer sliding-window dot-product matrix multiply-accumulate instructions is in the following table.
+
+.Data type of vmadot-x
+[width="100%",cols="2,2,3,3,3",options="header",]
+|===
+|category | instructions | Operand Type A | Operand Type B | Accumulator Type C .4+^.|
+slide-1 | 
+vmadot1   | int4/int8/int16 | int4/int8/int16 | int32/int32/fp32 |  
+vmadot1u  | uint4/uint8/uint16 | uint4/uint8/uint16 | int32/int32/fp32 |  
+vmadot1su | int4/int8/int16 | uint4/uint8/uint16 | int32/int32/fp32 |
+vmadot1us | uint4/uint8/uint16 | int4/int8/int16 | int32/int32/fp32 
+
+ .4+^.|slide-2 | 
+vmadot2   | int4/int8/int16 | int4/int8/int16 | int32/int32/fp32 |  
+vmadot2u  | uint4/uint8/uint16 | uint4/uint8/uint16 | int32/int32/fp32 |  
+vmadot2su | int4/int8/int16 | uint4/uint8/uint16 | int32/int32/fp32 |
+vmadot2us | uint4/uint8/uint16 | int4/int8/int16 | int32/int32/fp32 
+
+ .4+^.|slide-3| 
+vmadot3   | int4/int8/int16 | int4/int8/int16 | int32/int32/fp32 |  
+vmadot3u  | uint4/uint8/uint16 | uint4/uint8/uint16 | int32/int32/fp32 |  
+vmadot3su | int4/int8/int16 | uint4/uint8/uint16 | int32/int32/fp32 |
+vmadot3us | uint4/uint8/uint16 | int4/int8/int16 | int32/int32/fp32 
+
+ .4+^.|slide-n| 
+vmadotn   | int4/int8/int16 | int4/int8/int16 | int32/int32/fp32 |  
+vmadotnu  | uint4/uint8/uint16 | uint4/uint8/uint16 | int32/int32/fp32 |  
+vmadotnsu | int4/int8/int16 | uint4/uint8/uint16 | int32/int32/fp32 |
+vmadotnus | uint4/uint8/uint16 | int4/int8/int16 | int32/int32/fp32 
+|===
+
+And the usage of the instructions:
+
+....
+# vs1 refers to input A, vs2 refers to input B, and vd refers to output C.
+
+# slide 1
+vmadot1      vd,     vs1,    vs2
+vmadot1u     vd,     vs1,    vs2
+vmadot1su    vd,     vs1,    vs2
+vmadot1us    vd,     vs1,    vs2
+
+# slide 2
+vmadot2      vd,     vs1,    vs2
+vmadot2u     vd,     vs1,    vs2
+vmadot2su    vd,     vs1,    vs2
+vmadot2us    vd,     vs1,    vs2
+
+# slide 3
+vmadot3      vd,     vs1,    vs2
+vmadot3u     vd,     vs1,    vs2
+vmadot3su    vd,     vs1,    vs2
+vmadot3us    vd,     vs1,    vs2
+
+# slide 4
+vmadotn      vd,     vs1,    vs2,  t0
+vmadotnu     vd,     vs1,    vs2,  t0
+vmadotnsu    vd,     vs1,    vs2,  t0
+vmadotnus    vd,     vs1,    vs2,  t0
+....
+
+NOTE: the index of vd and vs1 must be even, and the slide value only support place in t0
+
+==== Floating point sliding-window dot-product matrix multiply-accumulate instruction
+
+Same as the integer one, the layout of input and output data in the registers also can be divided into two situations. The input A will be selected from VS1 and VS1+1 (the index of VS1 must be even), and the selected elements will be considered as _copies_ * (M,K) matrices. Input B is stored in VS2, with elements considered as _copies_ * (K,N) matrices. The result C will be stored in one register, with elements considered as _copies_ * (M,N) matrices. For example, when the VLEN=256 and SEW=8, the layout would be as illustrated in the following diagram:
+
+image:float-slide-window-0.png[float-slide-window-0.png]
+
+Elements of A are selected from a (2*4,8) matrix formed by combining VS1 and VS1+1, and the matching elements are selected through a specified sliding value. As demonstrated previously, with a slide value of 1, the blue frame slides down 8(1*K) elements. The resulting values form an (4,8) matrix, which serves as input matrix A for the matrix multiply-accumulate calculation. For matrix B and C, are the same as the instructions without slideing.
+
+In the case of VLEN=512, SEW=8, where _copy_ is set to 2, the layout would be as shown in the following diagram:
+
+image:float-slide-window-1.png[float-slide-window-1.png]
+
+The elements in VS1 and VS1+1 can be considered as two (2*4, 8) matrices. Then, in the same manner as with _copy_=1, the matching elements are selected using a specified slide value. The data obtained from the slide are two (M,K) matrices, which serve as input matrices A for the matrix multiply-accumulate computation.
+
+Sliding-window dot-product matrix multiply-accumulate instructions also take matrix A and matrix B as input, and accumulate the multiplication result of A and B into C.
+
+* shape of A: M rows, K columns [x Copies]
+* shape of B: K rows, N columns [x Copies]
+* shape of C: M rows, N columns [x Copies]
+
+The function description:
+....
+assume FP = fp16 or bfp16
+Copies=(sqrt(VLEN/64) == floor(sqrt(VLEN/64)) ? 1 : 2)
+for (cp = 0; cp < Copies; cp++) {
+    for (i = 0; i < M; i++) {
+        for (j = 0; j < N; j ++) {
+            for (k = 0; k < K; k++) {
+                C[cp * M * N + i * N + j] +=
+                    FP(A[cp * M * K + slide * K + i * N + k] * B[cp * K *N + k * N + j]);
+                }
+             }
+         }
+     }
+ }
+....
+
+
+The data type of supported by the the floating-point sliding-window dot-product matrix multiply-accumulate instructions is in the following table.
+
+.Data type of vfmadot-x
+[width="100%",cols="2,2,3,3,3",options="header",]
+|===
+|category | instructions | Operand Type A | Operand Type B | Accumulator Type C |
+slide-1 | vfmadot1  | fp4/fp8/fp16/bfp16 | fp4/fp8/fp16/bfp16 | fp16/fp16/fp16/bfp16 |
+slide-2 | vfmadot2  | fp4/fp8/fp16/bfp16 | fp4/fp8/fp16/bfp16 | fp16/fp16/fp16/bfp16 |
+slide-3 | vfmadot3  | fp4/fp8/fp16/bfp16 | fp4/fp8/fp16/bfp16 | fp16/fp16/fp16/bfp16 |
+slide-n |vfmadotn  | fp4/fp8/fp16/bfp16 | fp4/fp8/fp16/bfp16 | fp16/fp16/fp16/bfp16 |
+|===
+
+And the usage of the instructions:
+
+....
+# vs1 refers to input A, vs2 refers to input B, and vd refers to output C.
+
+# slide 1
+vfmadot1      vd,     vs1,    vs2
+
+# slide 2
+vfmadot2      vd,     vs1,    vs2
+
+# slide 3
+vfmadot3      vd,     vs1,    vs2
+
+# slide 4
+vfmadotn      vd,     vs1,    vs2,  t0
+....
+
+NOTE: the index of vs1 must be even, and the slide value only support place in t0
+

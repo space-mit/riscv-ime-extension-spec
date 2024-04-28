@@ -1,0 +1,45 @@
+[[program]]
+== Programmer’s Model
+
+This extension is based on the standard RISCV vector registers and does not add any state control registers and matrix registers, ensuring that the programming model remains as similar as possible to the standard RVV programming model. It includes the usage of rounding modes, configuration instructions such as vsetvli/vsetivli/vsetvl, etc. Unlike the standard RISCV Vector 1.0, the matrix extension instructions will select the corresponding matrix multiply and accumulate (MAC) unit based on the vl and SEW values obtained from the configuration instructions.
+
+NOTE: This extension instructions only support cases where LMUL is less than or equal to 1.
+
+The VLEN supported by this extension is from 128 to 4096, while SEW is only supported 4, 8 and 16. And a new variable called _Copy_ is introduced. It refers to the number of copies of the MAC unit. In other words, when _copy_ is 1, one instruction can only perform one MAC computation for a pair of input data. And when _copy_ is 2, one instruction can perform two MAC computation for two pairs of input data.
+
+The MAC (M*N*K[x _Copies_]) unit corresponding to different vl and SEW are as follows:
+
+.MAC unit for different vl and SEW
+[align="center",options="header"]
+|===
+|vl*SEW |128 |256 |512 |1024 |2048 |4096
+|SEW=4  |2x2x8[x2] |4x4x16 |4x4x16[x2] |8x8x32  |8x8x32[x2] |16x16x64
+|SEW=8  |2x2x4[x2] |4x4x8  |4x4x8[x2]  |8x8x16  |8x8x16[x2] |16x16x32
+|SEW=16 |2x2x2[x2] |4x4x4  |4x4x4[x2]  |8x8x8   |8x8x8[x2]  |16x16x16
+|===
+
+For different VLEN of different hardware, the supported vl configuration are in the following table.
+
+.Vl supported for different VLEN
+[align="center",options="header"]
+|===
+|VLEN   |128 |256 |512 |1024 |2048 |4096
+|vl*SEW |128 |128/256 |128/256/512 |128/256/512/1024  |128/256/512/1024/2048 |28/256/512/1024/2048/4096
+|===
+
+For example, when VLEN is 1024 and SEW is 8, the selection of the MAC unit: 
+
+----
+Example of selection of MAC unit:
+
+let VLEN = 1024, then:
+
+ vsetvli t0, x0, e8, m1, ta, ma   # select the 8x8x16 MAC unit, whose SEW is 8.
+
+ li      t0, 256
+ vsetvli t0, t0, e8, m1, ta, ma   # select the 4x4x8 MAC unit, whose SEW is 8
+----
+
+As mentioned before, LMUL is only support less than or equal to 1. The max MAC unit implemented by hardware should not exceed the configuration of vl*SEW equalling to VLEN. For example, when VLEN is 1024 and SEW is 8, the hardware can select the MAC units from 2x2x4[x2], 4x4x8, 4x4x8[x2] and 8x8x16.
+
+NOTE: When the MAC unit select by configure instruction is not support by the hardware, an illegal instruction will occur during execution. And the hardware need not to check the overlap of vd.

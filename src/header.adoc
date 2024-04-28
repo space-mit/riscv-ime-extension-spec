@@ -1,0 +1,81 @@
+:description: Multiplication and convolution instruction spec
+:company: SpacemiT
+:revnumber: 20240422
+//:revremark: Pre-release version
+//development: assume everything can change
+//stable: assume everything could change
+//frozen: of you implement this version you assume the risk that something might change because of the public review cycle  but we expect little to no change.
+//ratified: you can implement this and be assured nothing will change. if something needs to change due to an errata or enhancement, it will come out in a new extension. we do not revise extensions.
+:url-riscv: http://riscv.org
+:doctype: book
+:pdf-theme: ../src/resources/themes/riscv-spec.yml
+:pdf-fontsdir: ../src/resources/fonts/
+:preface-title: Preamble
+:colophon:
+:appendix-caption: Appendix
+:imagesdir: images
+//:title-logo-image: image:risc-v_logo.png[pdfwidth=3.25in,align=center]
+//:page-background-image: image:draft.png[opacity=20%]
+//:title-page-background-image: none
+//:back-cover-image: image:backpage.png[opacity=25%]
+// Settings:
+:experimental:
+:reproducible:
+:imagesoutdir: images
+:bibtex-file: ../src/resources/spacemit-spec.bib
+:bibtex-order: alphabetical
+:bibtex-style: apa
+:bibtex-format: asciidoc
+:bibtex-throw: false
+:icons: font
+:lang: en
+:listing-caption: Example
+:sectnums:
+:sectnumlevels: 5
+:toc: left
+:toclevels: 4 
+:source-highlighter: pygments
+ifdef::backend-pdf[]
+:source-highlighter: rouge
+endif::[]
+:table-caption: Table
+:figure-caption: Figure
+:xrefstyle: short 
+:chapter-refsig: Chapter
+:section-refsig: Section
+:appendix-refsig: Appendix
+:data-uri:
+:hide-uri-scheme:
+:stem: latexmath
+:footnote:
+:le: &#8804;
+:ge: &#8805;
+:ne: &#8800;
+:approx: &#8776;
+:inf: &#8734;
+
+= The RISC-V IME Set Specification
+SpacemiT
+
+// Preamble
+[WARNING]
+.This document is in the link:http://riscv.org/spec-state[Development state]
+
+Assume everything can change, before being accepted as standard.
+
+[preface]
+== Copyright and license information
+This specification is licensed under the Creative Commons
+Attribution 4.0 International License (CC-BY 4.0). The full
+license text is available at
+https://creativecommons.org/licenses/by/4.0/.
+
+Copyright 2024 by SpacemiT.
+//[%hardbreaks]
+
+include::intro.adoc[]
+include::program-model.adoc[]
+include::instruction-func.adoc[]
+include::instruction-format.adoc[]
+include::instruction-list.adoc[]
+include::example.adoc[]

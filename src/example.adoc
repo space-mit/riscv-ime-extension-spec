@@ -1,0 +1,30 @@
+[[example]]
+== Example of convolution compute
+
+The computation of 2D convolution can be accelerated by utilising dot-product matrix multiply-accumulate instructions and sliding-window dot-product matrix multiply-accumulate instructions. Giving an input feature map size of 1x3x8x8(NHWC), kernel size of 3x3, with stride = 1, padding = 0, and an output channel number = 4, the size of the output feature map will be 1x4x6x6(HWC).
+
+The compute shown in the following 3 figures can be performed, by employing the following three instructions. Each time, the value stored in the current VD vector register will be accumulated with the value obtained from this matrix multiplication.
+
+....
+vmadot     vd, vs1, vs2
+vmadot1    vd, vs1, vs2'
+vmadot2    vd, vs1, vs2''
+....
+
+image:conv-1.jpg[conv-1.jpg]
+image:conv-2.jpg[conv-2.jpg]
+image:conv-3.jpg[conv-3.jpg]
+
+This implementation accomplishes the calculation of the first row within the receptive field of the feature map and the first row of the convolution. The calculations for the second and third rows are carried out in the same accumulative manner as described above, as shown in the following tow figures, respectively.
+
+image:conv-4.jpg[conv-4.jpg]
+image:conv-5.jpg[conv-5.jpg]
+
+
+After completing the above operations, the values stored in the target vector register correspond to the output feature map as shown in following figure.
+
+image:conv-6.jpg[conv-6.jpg]
+
+To slide the input feature map, padding with zeros is performed due to the row direction being less than 8. At this point, the values in the VS1 register only need to be transferred from the previous round's VS1+1 register, and the values in the VS1+1 register can be set to zero. By following the representation method shown in the following figure, the output feature map can be computed, thus completing the 2D convolution operation.
+
+image:conv-7.jpg[conv-7.jpg]

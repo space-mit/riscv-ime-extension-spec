@@ -1,0 +1,4 @@
+[[format]]
+== Instruction fromat
+
+include::images/wavedrom/ma-format.adoc[]

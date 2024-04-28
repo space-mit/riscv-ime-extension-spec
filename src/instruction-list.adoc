@@ -1,0 +1,26 @@
+[[inslist]]
+== Instruction list
+
+[cols="2,1,1,1,1,2,1,1,1,1",options="headers"]
+|===
+5+| Integer               5+| Float
+
+| funct7   |   |   |   |     | funct7   |   | |  |   
+| OPMMA-0  |uu |ss |us |su   | OPFMMA-0 |ff | | |  
+| OPMMA-1  |uu |ss |us |su   | OPFMMA-1 |ff | | |  
+| OPMMA-2  |uu |ss |us |su   | OPFMMA-2 |ff | | |  
+| OPMMA-3  |uu |ss |us |su   | OPFMMA-3 |ff | | |  
+| OPMMA-n  |uu |ss |us |su   | OPFMMA-n |ff | | |  
+|===
+
+[cols="2,1,1,1,1,2,2,1,1,1,1,2",options="headers"]
+|===
+6+| funct7                  6+| funct7
+
+| 111000 |uu|ss|us|su| vmadot       | 111010 |ff| | | |vfmadot
+| 111001 |uu|ss|us|su| vmadot1      | 111010 |ff| | | |vfmadot1
+| 111001 |uu|ss|us|su| vmadot2      | 111010 |ff| | | |vfmadot2
+| 111001 |uu|ss|us|su| vmadot3      | 111010 |ff| | | |vfmadot3
+| 111001 |uu|ss|us|su| vmadotn      | 111010 |ff| | | |vfmadotn
+|===
+
