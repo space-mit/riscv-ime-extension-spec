@@ -32,7 +32,10 @@ docker run -it -v $(pwd)/riscv-isa-manual:/build riscvintl/riscv-docs-base-conta
 cd ./build
 make
 ```
-If you do not want build, a built pdf file is in the build folder.
+
+## Official Version
+- **Official versions** of the specifications are available at the [github release page](https://github.com/space-mit/riscv-ime-extension-spec/releases)
+
 
 ## Contributing
 If you would like to contribute to this documentation, please refer to the [Documentation Developer's Guide](https://github.com/riscv/docs-dev-guide).
